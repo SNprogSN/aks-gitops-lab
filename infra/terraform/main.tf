@@ -4,10 +4,12 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.0"
     }
+
     helm = {
       source  = "hashicorp/helm"
       version = "~> 2.0"
     }
+
     kubectl = {
       source  = "gavinbunney/kubectl"
       version = "~> 1.14"
@@ -28,14 +30,12 @@ provider "helm" {
   }
 }
 
-resource "helm_release" "argocd" {
-  name             = "argocd"
-  namespace        = "argocd"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-cd"
-  create_namespace = true
-
-  depends_on = [azurerm_kubernetes_cluster.aks]
+provider "kubectl" {
+  host                   = azurerm_kubernetes_cluster.aks.kube_config[0].host
+  client_certificate     = base64decode(azurerm_kubernetes_cluster.aks.kube_config[0].client_certificate)
+  client_key             = base64decode(azurerm_kubernetes_cluster.aks.kube_config[0].client_key)
+  cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.aks.kube_config[0].cluster_ca_certificate)
+  load_config_file       = false
 }
 
 resource "azurerm_resource_group" "aks_rg" {
@@ -60,16 +60,26 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
 }
 
-provider "kubectl" {
-  host                   = azurerm_kubernetes_cluster.aks.kube_config[0].host
-  client_certificate     = base64decode(azurerm_kubernetes_cluster.aks.kube_config[0].client_certificate)
-  client_key             = base64decode(azurerm_kubernetes_cluster.aks.kube_config[0].client_key)
-  cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.aks.kube_config[0].cluster_ca_certificate)
-  load_config_file       = false
+resource "helm_release" "argocd" {
+  name             = "argocd"
+  namespace        = "argocd"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  create_namespace = true
+
+  depends_on = [azurerm_kubernetes_cluster.aks]
 }
 
-resource "kubectl_manifest" "bootstrap" {
+resource "kubectl_manifest" "bootstrap_apps" {
   yaml_body = file("${path.module}/../../platform/argocd/bootstrap-apps.yaml")
+
+  depends_on = [
+    helm_release.argocd
+  ]
+}
+
+resource "kubectl_manifest" "bootstrap_platform" {
+  yaml_body = file("${path.module}/../../platform/argocd/bootstrap-platform.yaml")
 
   depends_on = [
     helm_release.argocd

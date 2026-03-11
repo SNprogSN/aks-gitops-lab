@@ -7,8 +7,6 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
-  tls:
-  - secretName: demo-tls
   rules:
   - http:
       paths:

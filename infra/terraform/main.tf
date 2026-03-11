@@ -69,7 +69,7 @@ provider "kubectl" {
 }
 
 resource "kubectl_manifest" "bootstrap" {
-  yaml_body = file("${path.module}/bootstrap-app.yaml")
+  yaml_body = file("${path.module}/../../platform/argocd/bootstrap-apps.yaml")
 
   depends_on = [
     helm_release.argocd

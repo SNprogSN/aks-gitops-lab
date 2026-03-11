@@ -68,8 +68,16 @@ resource "helm_release" "argocd" {
   depends_on = [azurerm_kubernetes_cluster.aks]
 }
 
-resource "kubectl_manifest" "bootstrap" {
+resource "kubectl_manifest" "bootstrap_apps" {
   yaml_body = file("${path.module}/../../platform/argocd/bootstrap-apps.yaml")
+
+  depends_on = [
+    helm_release.argocd
+  ]
+}
+
+resource "kubectl_manifest" "bootstrap_platform" {
+  yaml_body = file("${path.module}/../../platform/argocd/bootstrap-platform.yaml")
 
   depends_on = [
     helm_release.argocd
